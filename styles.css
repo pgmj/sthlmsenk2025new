@@ -5,14 +5,14 @@ div.cell-output {
 /* css styles */
 @font-face {
     font-family: 'Lato';
-    src: url("fonts/lato.ttf") format('truetype');
+    src: url("fonts/Lato.ttf") format('truetype');
     font-weight: normal;
     font-style: normal;
 }
 
 @font-face {
     font-family: 'Roboto Mono';
-    src: url("fonts/robotoMono.ttf") format('truetype');
+    src: url("fonts/RobotoMono-Regular.ttf") format('truetype');
     font-weight: normal;
     font-style: normal;
 }
