@@ -1,0 +1,28 @@
+---
+title: "Introduktion och sammanfattning"
+title-block-banner: "#009ca6"
+title-block-banner-color: "#FFFFFF"
+date: last-modified
+format: html
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: true
+editor_options: 
+  markdown: 
+    wrap: 72
+  chunk_output_type: console
+bibliography: intro.bib
+---
+
+Analyserna har genomförts med Rasch-metodik, där fyra huvudområden undersöks i varje sammansättning av enkätfrågor:
+
+- dimensionalitet - mäter enkätfrågorna samma underliggande dimension/variabel?
+- lokalt oberoende - enkätfrågorna ska enbart vara relaterade till varandra genom den underliggande variabeln
+- invarians - fungerar frågorna likvärdigt mellan kön och årskurs?
+- ordnade svarskategorier - sannolikheten för en högre svarskategori ska vara systematiskt sammanhängande med ett högre mätvärde på den underliggande variabeln
+- targeting - hur väl passar frågorna respondenterna i termer av mätvärden?
+- reliabilitet - hur god mätprecision ger frågorna tillsammans?
+
+Metodiken som används i analyserna har frångått den gamla och missvisande praktiken med att använda olika tumregler kring gränsvärden för olika delar av analysen. I stället används simuleringar utifrån observerade data för att ta fram anpassade gränsvärden [@johansson_detecting_2025].

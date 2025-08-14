@@ -1,0 +1,786 @@
+---
+title: "Välbefinnande"
+title-block-banner: "#009ca6"
+title-block-banner-color: "#FFFFFF"
+date: last-modified
+format: html
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: true
+editor_options: 
+  markdown: 
+    wrap: 72
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(mokken)
+library(arrow)
+library(ggrepel)
+library(car)
+library(grateful) 
+library(kableExtra)
+library(readxl)
+library(tidyverse)
+library(eRm)
+library(mirt)
+library(iarm)
+library(psych)
+library(ggplot2)
+library(psychotree)
+library(matrixStats)
+library(reshape)
+library(knitr)
+library(patchwork)
+library(formattable) 
+library(easyRasch) # devtools::install_github("pgmj/easyRasch")
+library(glue)
+library(foreach)
+library(foreign)
+library(haven)
+library(labelled)
+library(gtsummary)
+
+
+### some commands exist in multiple packages, here we define preferred ones that are frequently used
+select <- dplyr::select
+count <- dplyr::count
+recode <- car::recode
+rename <- dplyr::rename
+filter <- dplyr::filter
+
+# import item information
+#itemlabels <- read_excel("itemlabels/PSF_itemlabels.xls")
+
+df.all <- read_excel("data/Stockholmsenkäten_250527.xls")
+
+itemlabels <- data.frame(itemnr = c(paste0("q",c(1,3,5:112))),
+                         item = names(df.all)
+                         )
+
+#write_csv(itemlabels,"data/itemlabels.csv")
+
+names(df.all) <- itemlabels$itemnr
+df <- df.all
+#glimpse(df)
+```
+
+
+## Omkodning
+```{r}
+
+### Tar bort observationer som inte är tjej eller kille
+df <- df %>%
+  filter(!grepl("annan könsidentitet|vill inte svara", tolower(q3)))
+
+df <- df %>% 
+  filter(!is.na(q3))
+
+### Byter namn på demografiska variabler
+count (df, q3)
+count (df, q1)
+count (df, q6)
+
+d <- df %>% 
+  rename(Kön = q3) %>% 
+  rename(Årskurs = q1) %>%
+  rename(Bostad = q6) 
+
+count (d, Kön)
+
+count (df, q7, q8, q9)
+
+### Koda om kön till numerisk + rätt etiketter
+
+d$Kön<-recode(d$Kön,"'Tjej'=1;'Kille'=2",as.factor=FALSE)
+d$Kön <- labelled(d$Kön, labels = c("Tjej" = 1, "Kille" = 2))
+
+d$Årskurs<-recode(d$Årskurs,"'Årskurs 9 i grundskolan'=1;'År 2 på gymnasiet'=2",as.factor=FALSE)
+d$Årskurs <- labelled(d$Årskurs, labels = c("årskurs 9" = 1, "år 2" = 2))
+
+
+```
+
+## Välbefinnande
+```{r}
+count (df, q13, q20)
+
+välbefinnande <- c("q13", "q14", "q15", "q16", "q17", "q18", "q19", "q20")
+
+
+ # Koda om till numeriska + etiktter. Låga värden = lågt välbefinnande
+d <- d %>%
+  mutate(across(q13:q17, ~ recode(.x,
+                                  "'Mycket ofta'=4; 'Ganska ofta'=3; 'Ibland'=2; 'Sällan'=1; 'Aldrig'=0", 
+                                  as.factor = FALSE))) %>%
+  mutate(across(q13:q17, ~ labelled(.x,
+                                    labels = c("Mycket ofta" = 4,
+                                               "Ganska ofta" = 3,
+                                               "Ibland" = 2,
+                                               "Sällan" = 1,
+                                               "Aldrig" = 0))))
+
+d <- d %>%
+  mutate(across(q18:q19, ~ recode(.x,
+                                  "'Alltid'=5; 'Mycket ofta'=4; 'Ganska ofta'=3; 'Ibland'=2; 'Sällan'=1; 'Aldrig'=0", 
+                                  as.factor = FALSE))) %>%
+  mutate(across(q18:q19, ~ labelled(.x,
+                                    labels = c("Alltid" = 5,
+                                               "Mycket ofta" = 4,
+                                               "Ganska ofta" = 3,
+                                               "Ibland" = 2,
+                                               "Sällan" = 1,
+                                               "Aldrig" = 0))))
+
+d$q20<-recode(d$q20,"'Mycket bättre'=4;'Lite bättre'=3; 'Lika bra'=2; 'Lite sämre'=1; 'Mycket sämre'=0",as.factor=FALSE)
+d$q20 <- labelled(d$q20, labels = c("Mycket bättre" = 4, "Lite bättre" = 3, "Lika bra" = 2, "Lite sämre" = 1,"Mycket sämre" = 0))
+
+
+count (d, q13)
+count (d, q14)
+count (d, q15)
+count (d, q16)
+count (d, q17)
+count (d, q18)
+count (d, q19)
+count (d, q20)
+
+```
+
+## PSF
+```{r}
+
+psf <- c("q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28")
+
+```
+
+
+## Våld
+```{r}
+
+våld_utsatt <- c("q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28")
+
+våld_förövare <- c("q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28")
+
+
+```
+
+
+```{r}
+#d %>% 
+  #select(q13:q20) %>% 
+  #pivot_longer(everything()) %>% 
+  #distinct(value)
+```
+
+
+Sektionen i PDF/pappers-enkäten inleds med meningen: "NÅGRA FRÅGOR OM HUR DU MÅR".
+
+```{r}
+
+# Skapa dataframe för välbefinnande utan NA:s
+d_v <- d %>% 
+  select(Kön, Årskurs, Bostad, any_of(välbefinnande))%>% 
+  na.omit()
+
+# Skapa DIF df
+d_dif_v <- d_v %>% 
+  select(Kön, Årskurs, Bostad) %>% 
+  mutate(across(everything(), ~ factor(.x)))
+
+# remove non-items
+d_v <- d_v %>% 
+  select(!c(Kön,Årskurs,Bostad))
+
+```
+
+## Färger 
+```{r}
+RISEpalette1 <- colorRampPalette(colors = c("#009ca6", "#e83c63", "#ffe500"))(6)
+#scales::show_col(RISEpalette1)
+
+RISEpalette2 <- colorRampPalette(colors = c("#009ca6", "#482d55", "#e83c63", "#ffe500"))(8)
+
+gender_colors <- c("Kille" = colorspace::lighten("#F5A127", amount = 0.2) , "Tjej" = colorspace::lighten("#009CA6", amount = 0.2))
+scale_color_gender <- partial(scale_color_manual, values = gender_colors)
+scale_fill_gender <- partial(scale_fill_manual, values = gender_colors)
+
+labels_v_13_17 <-c(
+                                               "Mycket ofta" = 4,
+                                               "Ganska ofta" = 3,
+                                               "Ibland" = 2,
+                                               "Sällan" = 1, "Aldrig" = 0)
+names(labels_v_13_17)
+
+
+
+labels_v_18_19 <-c("Alltid" = 5,
+                                               "Mycket ofta" = 4,
+                                               "Ganska ofta" = 3,
+                                               "Ibland" = 2,
+                                               "Sällan" = 1, "Aldrig" = 0)
+names(labels_v_18_19)
+
+labels_v_20 <-c("Mycket bättre" = 4,
+                                               "Lite bättre" = 3,
+                                               "Lika bra" = 2,
+                                               "Lite bättre" = 1,
+                                               "Mycket bättre" = 0)
+names(labels_v_20)
+
+```
+
+
+
+## Deskriptiva data Välbefinnande
+
+## Formatering figur
+```{r}
+
+plot_gender <- function(data, items, kolumner = 2, labelwrap = 24, text_ypos = 28, text_size = 3) {
+  
+  data %>% 
+    pivot_longer(all_of(items),
+                 names_to = "itemnr") %>% 
+    group_by(itemnr,Kön) %>% 
+    count(value) %>% 
+    mutate(percent = n*100/sum(n)) %>% 
+    ungroup() %>% 
+    mutate(Kön = factor(Kön, labels = c("Tjej","Kille")),
+           value = factor(value, ordered = T)) %>% 
+    left_join(itemlabels, by = "itemnr") %>%
+    
+    ggplot(aes(x = value, y = n, fill = Kön)) +
+    geom_col(position = "dodge") +
+    geom_text(aes(label = paste0(round(percent,1),"%"), 
+                  y = text_ypos),
+              position = position_dodge(width = 0.9),
+              angle = 0,
+              color = "black",
+              size = text_size,
+              hjust = "left") +
+    facet_wrap(~item, 
+               ncol = kolumner,
+               labeller = labeller(item = label_wrap_gen(labelwrap))) +
+    scale_fill_gender() +
+    theme_rise(fontfamily = "Avenir") +
+    labs(x = "Svarskategori",
+         y = "Antal svar",
+         caption = "Andel svar anges i procent i figuren.") +
+    coord_flip()
+}
+
+
+
+```
+
+## Deskriptiva figurer blivit välbefinnande
+```{r}
+
+## Utfryst, rykte, trakasserad, begränsad
+d %>% 
+  plot_gender(items = c("q13", "q14", "q15", "q16", "q17"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_v_13_17), 14))
+
+d %>% 
+  plot_gender(items = c("q18", "q19"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_v_18_19), 14))
+
+d %>% 
+  plot_gender(items = c("q20"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_v_20), 14))
+
+
+```
+
+### Demografi
+
+
+### Item-data
+
+::: panel-tabset
+#### Tile plot
+```{r}
+RItileplot(d_v)
+```
+#### Stacked bars
+```{r}
+RIbarstack(d_v)
+```
+#### Barplots
+```{r}
+#| layout-ncol: 2
+RIbarplot(d_v)
+```
+:::
+
+## Analys 1 Välbefinnande samtliga items
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_v)
+```
+
+::: panel-tabset
+### Mokken dimensionality
+```{r}
+aisp(d_v) %>% 
+  as.data.frame() %>% 
+  set_names("h > 0.3") %>% 
+  arrange(`h > 0.3`) %>% 
+  kbl_rise(tbl_width = 20)
+```
+
+### Item-restscore
+```{r}
+d_v %>% 
+  #select(!any_of(removed_items)) %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+RIrestscore(d_v)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_v)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_v)
+```
+### LRT
+```{r}
+RIbootLRT(d_v)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_v)
+```
+### Targeting
+```{r}
+RItargeting(d_v)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_v)
+```
+### Svarskategorier
+```{r}
+mirt(d_v, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_v)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Kön)
+RIdifTableLR(d_v, d_dif_v$Kön)
+RIdifThreshFigLR(d_v, d_dif_v$Kön)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$kon)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Årskurs)
+RIdifTableLR(d_v, d_dif_v$Årskurs)
+RIdifThreshFigLR(d_v, d_dif_v$Årskurs)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$arskurs)
+```
+### DIF år
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Bostad)
+#RIdifTableLR(d_v, d_dif_v$Bostad)
+#RIdifThreshFigLR(d_v, d_dif_v$Bostad)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$year)
+```
+:::
+
+
+- Enligt Mokken passar q20 "Om du jämför dig med andra i din ålder..." inte in bland övriga
+- q20 är även starkt underfit samt q19 "Hur ofta är du nöjd med hur du ser ut?"
+- PCA 1.96
+- Lokalt beroende mellan q13 "lycka och glädje" och q14 "intresse för livet" samt q13 och q15 "nöjd med livet som det är nu
+- Targeting ganska bra, inte så mycket takeffekter, q18 "Hur ofta tycker du att livet är härligt" verkar täcka upp längst spann
+- Inga oordnade svarskategorier
+- Svarskategorierna täcker upp mycket bra
+
+Positivt att svarskategorierna verkar fungera bra för alla items. Nu testar vi och ser om vissa av frågorna kan fungera som ett välbefinnandekonstrukt. Tar därmed bort q20 som inte verka passa in. Troligtvis ryker även q19.
+
+
+```{r}
+removed_items <- c("q20")
+```
+
+```{r}
+d_backup_v <- d_v
+
+d_v <- d_v %>% 
+  select(!any_of(removed_items))
+```
+
+
+## Analys 2
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_v)
+```
+
+::: panel-tabset
+### Mokken dimensionality
+```{r}
+aisp(d_v) %>% 
+  as.data.frame() %>% 
+  set_names("h > 0.3") %>% 
+  arrange(`h > 0.3`) %>% 
+  kbl_rise(tbl_width = 20)
+```
+
+### Item-restscore
+```{r}
+d_v %>% 
+  #select(!any_of(removed_items)) %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+RIrestscore(d_v)
+```
+### Conditional infit
+```{r}
+simfit2 <- d_v %>%
+  #select(!any_of(removed_items)) %>% 
+ RIgetfit(iterations = 200, cpu = 8)
+
+d_v %>%
+  #select(!any_of(removed_items)) %>% 
+  RIitemfit(simfit2)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_v)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_v)
+```
+### LRT
+```{r}
+RIbootLRT(d_v)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_v)
+```
+### Targeting
+```{r}
+RItargeting(d_v)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_v)
+```
+### Svarskategorier
+```{r}
+mirt(d_v, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_v)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Kön)
+RIdifTableLR(d_v, d_dif_v$Kön)
+RIdifThreshFigLR(d_v, d_dif_v$Kön)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Årskurs)
+RIdifTableLR(d_v, d_dif_v$Årskurs)
+RIdifThreshFigLR(d_v, d_dif_v$Årskurs)
+```
+### DIF år
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Bostad)
+#RIdifTableLR(d_v, d_dif_v$Bostad)
+#RIdifThreshFigLR(d_v, d_dif_v$Bostad)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$year)
+```
+:::
+
+- Tar bort q19 pga. underfit och q14 pga. korrelation q13 och q18 samt lite oklart formulering
+
+MJ: nedan tas bara 19 bort, vilket jag skulle gjort också.
+
+```{r}
+removed_items <- c("q20", "q19")
+```
+
+```{r}
+d_v <- d_v %>% 
+  select(!any_of(removed_items))
+```
+
+
+## Analys 3
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_v)
+```
+
+::: panel-tabset
+### Mokken dimensionality
+```{r}
+aisp(d_v) %>% 
+  as.data.frame() %>% 
+  set_names("h > 0.3") %>% 
+  arrange(`h > 0.3`) %>% 
+  kbl_rise(tbl_width = 20)
+```
+
+### Item-restscore
+```{r}
+d_v %>% 
+  #select(!any_of(removed_items)) %>% 
+  RIbootRestscore(iterations = 200, samplesize = 600, cpu = 8)
+RIrestscore(d_v)
+```
+### Conditional infit
+```{r}
+simfit3 <- d_v %>%
+ RIgetfit(iterations = 200, cpu = 8)
+
+d_v %>%
+  RIitemfit(simfit3)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_v)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_v)
+```
+### LRT
+```{r}
+RIbootLRT(d_v)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_v)
+```
+### Residualkorrelationer
+```{r}
+simcor3 <- RIgetResidCor(d_v, iterations = 500, cpu = 8)
+
+RIresidcorr(d_v, cutoff = simcor3$p995)
+```
+### Targeting
+```{r}
+RItargeting(d_v)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_v)
+```
+### Svarskategorier
+```{r}
+mirt(d_v, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_v)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Kön)
+RIdifTableLR(d_v, d_dif_v$Kön)
+RIdifThreshFigLR(d_v, d_dif_v$Kön)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Årskurs)
+RIdifTableLR(d_v, d_dif_v$Årskurs)
+RIdifThreshFigLR(d_v, d_dif_v$Årskurs)
+```
+### DIF år
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Bostad)
+#RIdifTableLR(d_v, d_dif_v$Bostad)
+#RIdifThreshFigLR(d_v, d_dif_v$Bostad)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$year)
+```
+### Reliabilitet
+```{r}
+d_v %>% 
+  #select(!any_of(removed_items)) %>% 
+  RItif(samplePSI = T)
+```
+:::
+
+MJ: 16 är mest underfit, jag testade ta bort den och sedan även 17 pga underfit (när 16 tagits bort). Såg ut att fungera bra med uppsättningen "q13" "q14" "q15" "q18", även om det finns en reskorr mellan 13 och 14 som ligger på gränsen. 
+
+  itemnr                                     item
+1    q13                        lycka och glädje?
+2    q14                 ett intresse för livet? 
+3    q15   dig nöjd med livet som det är just nu?
+4    q18 Hur ofta tycker du att livet är härligt?
+
+Om du tar bort 14 istf 16 så blir 16 underfit i nästa steg, och tar du bort 16 blir 17 underfit. Så jag tänker att vi bör behålla 14.
+
+```{r}
+removed_items <- c("q20", "q19", "q14")
+```
+
+```{r}
+d_v <- d_v %>% 
+  select(!any_of(removed_items))
+```
+
+
+## Analys 4
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_v)
+```
+
+::: panel-tabset
+### Mokken dimensionality
+```{r}
+aisp(d_v) %>% 
+  as.data.frame() %>% 
+  set_names("h > 0.3") %>% 
+  arrange(`h > 0.3`) %>% 
+  kbl_rise(tbl_width = 20)
+```
+
+### Item-restscore
+```{r}
+d_v[,-3] %>% 
+  #select(!any_of(removed_items)) %>% 
+  RIbootRestscore(iterations = 200, samplesize = 600, cpu = 8)
+RIrestscore(d_v)
+```
+### Conditional infit
+```{r}
+simfit3 <- d_v %>%
+ RIgetfit(iterations = 200, cpu = 8)
+
+d_v %>%
+  RIitemfit(simfit3)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_v)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_v)
+```
+### LRT
+```{r}
+RIbootLRT(d_v)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_v)
+```
+### Residualkorrelationer
+```{r}
+simcor3 <- RIgetResidCor(d_v, iterations = 500, cpu = 8)
+
+RIresidcorr(d_v, cutoff = simcor3$p995)
+```
+### Targeting
+```{r}
+RItargeting(d_v)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_v)
+```
+### Svarskategorier
+```{r}
+mirt(d_v, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_v)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Kön)
+RIdifTableLR(d_v, d_dif_v$Kön)
+RIdifThreshFigLR(d_v, d_dif_v$Kön)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Årskurs)
+RIdifTableLR(d_v, d_dif_v$Årskurs)
+RIdifThreshFigLR(d_v, d_dif_v$Årskurs)
+```
+### DIF år
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Bostad)
+#RIdifTableLR(d_v, d_dif_v$Bostad)
+#RIdifThreshFigLR(d_v, d_dif_v$Bostad)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$year)
+```
+### Reliabilitet
+```{r}
+d_v %>% 
+  #select(!any_of(removed_items)) %>% 
+  RItif(samplePSI = T)
+```
+:::
+## Programvara som använts för analyserna
+
+```{r}
+#| label: packagesv
+# pkgs <- cite_packages(cite.tidyverse = TRUE, 
+#                       output = "table",
+#                       bib.file = "grateful-refs.bib",
+#                       include.RStudio = TRUE,
+#                       out.dir = getwd())
+# formattable(pkgs, 
+#             table.attr = 'class=\"table table-striped\" style="font-size: 15px; font-family: Lato; width: 80%"')
+```
+
+```{r}
+sessionInfo()
+```
+
+
+## Referenser
+
+
+
+
+
+
+
+
+
+
+
+
+

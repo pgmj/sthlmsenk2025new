@@ -1,0 +1,111 @@
+itemnr,item
+q1,Vilken årskurs går du i?
+q3,"Är du tjej, kille eller har du en annan könsidentitet? "
+q5,Vilka personer bor du tillsammans med? Du kan kryssa i flera svarsalternativ.
+q6,Vad bor du i för bostad?
+q7,Du själv
+q8,Förälder 1
+q9,Förälder 2
+q10,Hur länge har du bott i Sverige?
+q11,Förälder/vårdnadshavare 1
+q12,Förälder/vårdnadshavare 2
+q13,lycka och glädje?
+q14,ett intresse för livet? 
+q15,dig nöjd med livet som det är just nu?
+q16,dig lugn och avslappnad?
+q17,dig pigg och full av energi?
+q18,Hur ofta tycker du att livet är härligt?
+q19,Hur ofta känner du dig nöjd med hur du ser ut?
+q20,"Om du jämför dig med andra i din ålder, tror du att din framtid kommer vara sämre, lika bra eller bättre?"
+q21,du känner dig rädd utan att veta varför?
+q22,du känner att du inte duger?
+q23,du känner dig slö och olustig?
+q24,du känner dig ledsen eller deppig utan att veta varför?
+q25,"Känt dig nervös, orolig eller spänd"
+q26,Haft svårt att sluta oroa dig eller kontrollera din oro
+q27,Minskat intresse eller glädje att göra saker
+q28,Känt dig nedstämd eller upplevt en känsla av hopplöshet
+q29,någon av dem uppmuntrar och stöttar dig?
+q30,någon av dem ägnar tillräckligt med tid åt dig?
+q31,du kan prata med någon av dem om nästan allt?
+q32,någon av dem tar sig tid att lyssna på dig?
+q33,någon av dem hjälper dig med läxor och skolarbeten om du behöver?
+q34,du kan lita på någon av dem om du verkligen behöver?
+q35,Vet någon av dina föräldrar/vårdnadshavare vilka kompisar du umgås med på din fritid på internet/mobilen?
+q36,Vet någon av dina föräldrar/vårdnadshavare vilka kompisar du umgås med på din fritid (ej via internet/mobilen)?
+q37,Känner du dig orolig över din familjs ekonomi?
+q38,Upplever du att din familj har råd att göra/köpa saker som de flesta andra på din skola?
+q39,"Har du någon gång känt dig mobbad? Med mobbning menas att du upprepade gånger behandlats illa av någon annan t.ex. fått elaka kommentarer, blivit hotad, slagen eller utfryst. Det kan ske på nätet ..."
+q40,Var har du blivit mobbad? Du kan kryssa i flera svarsalternativ.
+q41,Vem eller vilka är det som har mobbat dig? Du kan kryssa i flera svarsalternativ.
+q42,Har du någon gång själv mobbat någon?
+q43,Har du någon gång känt dig utfryst?
+q44,Var har det hänt? Du kan kryssa i flera svarsalternativ.
+q45,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.
+q46,Har du någon gång blivit utsatt för ryktesspridning?
+q47,Var har det hänt? Du kan kryssa i flera svarsalternativ.2
+q48,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.2
+q49,"Har du någon gång känt dig trakasserad, kränkt, förnedrad eller hotad?"
+q50,Var har det hänt? Du kan kryssa i flera svarsalternativ.3
+q51,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.3
+q52,"Har du någon gång känt dig begränsad eller kontrollerad gällande val av vem du ska vara ihop med, umgänge, klädsel eller fritidsaktiviteter?"
+q53,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.4
+q54,"Har du någon gång, mot din vilja, varit med om att någon har blottat sig, tafsat på dig, eller att du mot din vilja tagit emot eller skickat avklädda bilder? "
+q55,Var har det hänt? Du kan kryssa i flera svarsalternativ.4
+q56,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.5
+q57,"Har du någon gång, mot din vilja onanerat åt någon eller mot din vilja haft vaginalt, oralt eller analt sex? "
+q58,Var har det hänt? Du kan kryssa i flera svarsalternativ.5
+q59,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.6
+q60,Har du någon gång blivit rånad?
+q61,Var har det hänt? Du kan kryssa i flera svarsalternativ.6
+q62,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.7
+q63,"Har du någon gång blivit knuffad, slagen, sparkad eller dragen i håret?"
+q64,Var har det hänt? Du kan kryssa i flera svarsalternativ.7
+q65,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.8
+q66,"Har du någon gång fått ersättning i utbyte mot sex? Gäller även via mobil eller dator. Ersättning kan t.ex. vara pengar, alkohol, cigaretter, droger, boende, mat, saker, resor m.m."
+q67,Var har det hänt? Du kan kryssa i flera svarsalternativ.8
+q68,Vem eller vilka är det som har utsatt dig? Du kan kryssa i flera svarsalternativ.9
+q69,"Om du har varit med om något av det vi frågat om gällande mobbning eller annan utsatthet, har du berättat för någon? Du kan kryssa i flera svarsalternativ."
+q70,Har du förväntningar på dig från familj och släkt kring att du ska vänta med sex tills du gifter dig?
+q71,Fryst ut någon
+q72,Spridit rykten om någon
+q73,"Trakasserat, kränkt, förnedrat eller hotat någon"
+q74,"Begränsat eller kontrollerat någon gällande val av partner, umgänge, klädsel eller fritidsaktiviteter"
+q75,"Tafsat, skickat eller krävt avklädda bilder, eller utfört någon annan sexuell handling mot en persons vilja"
+q76,Rånat någon
+q77,"Knuffat, slagit, sparkat eller dragit någon i håret"
+q78,"Snattat, stulit eller vandaliserat"
+q79,Har du någon gång under de senaste 12 månaderna blivit kontaktad av någon som erbjudit dig att köpa alkohol eller droger?
+q80,"Har du någon gång under de senaste 12 månaderna blivit kontaktad av någon som vill att du ska göra något brottsligt? T.ex. sälja eller förvara droger, hota någon eller stjäla något."
+q81,Var har du blivit kontaktad kring detta? Du kan kryssa i flera svarsalternativ.
+q82,Hur ofta känner du dig ensam?
+q83,Har du någon kompis du kan vara med i skolan?
+q84,Har du någon kompis du kan lita på och berätta personliga saker för?
+q85,Hur många timmar brukar du sova per natt på vardagar?
+q86,på vardagar efter skolan (måndag till torsdag)?
+q87,på helgdagar (lördag och söndag)?
+q88,på vardagar efter skolan (måndag till torsdag)?2
+q89,på helgdagar (lördag och söndag)?2
+q90,"att spela spel på dator/konsol (tv-spel), surfplatta eller mobil?"
+q91,"sociala medier (t.ex. Instagram, Facebook, Snapchat, Tiktok)"
+q92,"Hur ofta brukar du delta i någon ledarledd fritidsaktivitet eller träning? T.ex. sport, musik, teater, konst, hobby, religiöst, scouter, politik eller annan förening."
+q93,"Hur många timmar i veckan lägger du på träning som gör dig andfådd, t.ex. springa, spela fotboll, gå på gym eller idrottslektion i skolan?"
+q94,"Hur många timmar i veckan lägger du på vardagsmotion, t.ex. promenader i snabb takt eller cykla till och från skolan?"
+q95,Hur tycker du att du sover?
+q96,Hur stressad brukar du känna dig av skolarbetet?
+q97,andra människor i allmänhet?
+q98,människor i ditt bostadsområde?
+q99,polisen?
+q100,socialtjänsten?
+q101,I hemmet
+q102,I mitt bostadsområde på dagen
+q103,I skolan
+q104,På väg till eller ifrån skolan
+q105,"På internet (t.ex. sociala medier, onlinespel eller communities)"
+q106,I mitt bostadsområde på kvällen
+q107,På stan eller i centrum
+q108,I kollektivtrafiken
+q109,"Om du går ensam sent ute en kväll i området där du bor, känner du dig då..."
+q110,De som bor i mitt bostadsområde kommer bra överens
+q111,De som bor i mitt bostadsområde är hjälpsamma mot varandra
+q112,Vuxna skulle ingripa om det pågick ett bråk eller något brottsligt i mitt bostadsområde

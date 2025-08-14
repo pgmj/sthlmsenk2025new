@@ -1,0 +1,52 @@
+project:
+  type: book
+  output-dir: docs
+
+book:
+  title: "Stockholmsenkäten 2025"
+  subtitle: "Psykometrisk analys med Rasch-metodik"
+  repo-url: "https://github.com/pgmj/sthlmsenk2025new"
+  sidebar:
+    style: floating
+    search: true
+  author:
+    - name: 'Magnus Johansson'
+      affiliation: 'RISE Research Institutes of Sweden'
+      affiliation-url: 'https://ri.se/shic'
+      orcid: '0000-0003-1669-592X'
+    - name: 'Frida Sandelin'
+      affiliation: 'RISE Research Institutes of Sweden'
+      affiliation-url: 'https://ri.se/kbm'
+  date: last-modified
+  chapters:
+  - index.qmd
+  - 01_Intro.qmd
+  - 03_Välbefinnande.qmd
+  - 04_PSF2.qmd
+  - 06_Föräldrar.qmd
+
+format:
+  html:
+    logo: rise_logo_quarto.png
+    mainfont: 'Lato'
+    monofont: 'Roboto Mono'
+    linestretch: 1.6
+    theme:
+      - materia
+      - custom.scss
+    css: styles.css
+    link-external-newwindow: true
+    fig-dpi: 96
+    license: CC BY
+    crossref-sec-prefix: "Sektion"
+    toc-title: "Innehållsförteckning"
+    crossref-fig-title: "Figur"
+    crossref-tbl-title: "Tabell"
+    callout-note-title: "Beskrivning"
+    toc: true
+    toc-depth: 3
+    code-overflow: wrap
+    code-fold: true
+    code-tools: true
+    code-link: true
+    number-sections: true

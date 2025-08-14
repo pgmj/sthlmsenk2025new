@@ -1,0 +1,22 @@
+---
+format:
+  html:
+    toc: false
+---
+
+## Bakgrund {.unnumbered}
+
+RISE har på uppdrag av Stockholms Stad och Länsstyrelsen i Stockholm genomfört en
+genomlysning av skolenkäten Stockholmsenkäten. Detta arbete har omfattat analyser avseende
+
+- enkätkonstruktion
+- analys av psykometriska egenskaper hos vissa områden i enkäten, primärt utifrån enkätdata insamlad 2024
+- kognitiva intervjuer med elever
+- framtagande av förslag på nya och/eller omarbetade enkätfrågor utifrån ovanstående samt omvärldsbevakning av liknande enkäter
+- datainsamling för att utvärdera nya/omarbetade enkätfrågor
+- psykometriska analyser av insamlad data
+- rekommendationer av förändringar
+
+Denna "bok" innehåller fullständig dokumentation av den analys som genomförts i den näst sista punkten ovan.
+
+RISE har producerat en sammanfattande rapport som lämnats till uppdragsgivarna i augusti 2025.

@@ -1,0 +1,1343 @@
+---
+title: "Psykiska besvär"
+title-block-banner: "#009ca6"
+title-block-banner-color: "#FFFFFF"
+date: last-modified
+format: html
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: true
+editor_options: 
+  markdown: 
+    wrap: 72
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(mokken)
+library(arrow)
+library(ggrepel)
+library(car)
+library(grateful) 
+library(kableExtra)
+library(readxl)
+library(tidyverse)
+library(eRm)
+library(mirt)
+library(iarm)
+library(psych)
+library(ggplot2)
+library(psychotree)
+library(matrixStats)
+library(reshape)
+library(knitr)
+library(patchwork)
+library(formattable) 
+library(easyRasch) # devtools::install_github("pgmj/easyRasch")
+library(glue)
+library(foreach)
+library(foreign)
+library(haven)
+library(labelled)
+library(gtsummary)
+
+
+### some commands exist in multiple packages, here we define preferred ones that are frequently used
+select <- dplyr::select
+count <- dplyr::count
+recode <- car::recode
+rename <- dplyr::rename
+filter <- dplyr::filter
+
+# import item information
+#itemlabels <- read_excel("itemlabels/PSF_itemlabels.xls")
+
+df.all <- read_excel("data/Stockholmsenkäten_250527.xls")
+
+itemlabels <- data.frame(itemnr = c(paste0("q",c(1,3,5:112))),
+                         item = names(df.all)
+                         )
+
+write_csv(itemlabels,"data/itemlabels.csv")
+
+names(df.all) <- itemlabels$itemnr
+df <- df.all
+#glimpse(df)
+```
+
+
+## Omkodning
+```{r}
+
+### Tar bort observationer som inte är tjej eller kille
+df <- df %>%
+  filter(!grepl("annan könsidentitet|vill inte svara", tolower(q3)))
+
+df <- df %>% 
+  filter(!is.na(q3))
+
+### Byter namn på demografiska variabler
+count (df, q3)
+count (df, q1)
+count (df, q6)
+
+d <- df %>% 
+  rename(Kön = q3) %>% 
+  rename(Årskurs = q1) %>%
+  rename(Bostad = q6) 
+
+count (d, Kön)
+
+count (df, q7, q8, q9)
+
+### Koda om kön till numerisk + rätt etiketter
+
+#d$Kön <- recode(d$Kön,"'Tjej'=1;'Kille'=2",as.factor=FALSE)
+#d$Kön <- labelled(d$Kön, labels = c("Tjej" = 1, "Kille" = 2))
+
+#d$Årskurs<-recode(d$Årskurs,"'Årskurs 9 i grundskolan'=1;'År 2 på gymnasiet'=2",as.factor=FALSE)
+#d$Årskurs <- labelled(d$Årskurs, labels = c("årskurs 9" = 1, "år 2" = 2))
+
+d$Kön <- factor(d$Kön)
+d$Årskurs <- factor(d$Årskurs, labels = c("Åk 9","Gy 2"))
+```
+
+## Välbefinnande
+```{r}
+count (df, q13, q20)
+
+välbefinnande <- c("q13", "q14", "q15", "q16", "q17", "q18", "q19", "q20")
+
+
+ # Koda om till numeriska + etiktter. Låga värden = lågt välbefinnande
+d <- d %>%
+  mutate(across(q13:q17, ~ recode(.x,
+                                  "'Mycket ofta'=4; 'Ganska ofta'=3; 'Ibland'=2; 'Sällan'=1; 'Aldrig'=0", 
+                                  as.factor = FALSE))) %>%
+  mutate(across(q13:q17, ~ labelled(.x,
+                                    labels = c("Mycket ofta" = 4,
+                                               "Ganska ofta" = 3,
+                                               "Ibland" = 2,
+                                               "Sällan" = 1,
+                                               "Aldrig" = 0))))
+
+d <- d %>%
+  mutate(across(q18:q19, ~ recode(.x,
+                                  "'Alltid'=5; 'Mycket ofta'=4; 'Ganska ofta'=3; 'Ibland'=2; 'Sällan'=1; 'Aldrig'=0", 
+                                  as.factor = FALSE))) %>%
+  mutate(across(q18:q19, ~ labelled(.x,
+                                    labels = c("Alltid" = 5,
+                                               "Mycket ofta" = 4,
+                                               "Ganska ofta" = 3,
+                                               "Ibland" = 2,
+                                               "Sällan" = 1,
+                                               "Aldrig" = 0))))
+
+d$q20<-recode(d$q20,"'Mycket bättre'=4;'Lite bättre'=3; 'Lika bra'=2; 'Lite sämre'=1; 'Mycket sämre'=0",as.factor=FALSE)
+d$q20 <- labelled(d$q20, labels = c("Mycket bättre" = 4, "Lite bättre" = 3, "Lika bra" = 2, "Lite sämre" = 1,"Mycket sämre" = 0))
+
+
+count (d, q13)
+count (d, q14)
+count (d, q15)
+count (d, q16)
+count (d, q17)
+count (d, q18)
+count (d, q19)
+count (d, q20)
+
+```
+
+## PSF
+```{r}
+
+count (df, q21, q28)
+
+psf <- c("q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28")
+
+
+ # Koda om till numeriska + etiktter. Låga värden = låg risk
+d <- d %>%
+  mutate(across(q21:q24, ~ recode(.x,
+                                  "'Aldrig/sällan'=0; 'Ibland'=1; 'Ganska ofta'=2; 'Mycket ofta'=3", 
+                                  as.factor = FALSE))) %>%
+  mutate(across(q21:q24, ~ labelled(.x,
+                                    labels = c("Aldrig/sällan" = 0,
+                                               "Ibland" = 1,
+                                               "Ganska ofta" = 2,
+                                               "Mycket ofta" = 3))))
+
+d <- d %>%
+  mutate(across(q25:q28, ~ recode(.x,
+                                  "'Inte besvärats alls'=0; 'En eller två dagar'=1; 'Flera dagar'=2; 'Mer än hälften av dagarna'=3; 'Nästan varje dag'=4", 
+                                  as.factor = FALSE))) %>%
+  mutate(across(q25:q28, ~ labelled(.x,
+                                    labels = c("Inte besvärats alls" = 0,
+                                               "En eller två dagar" = 1,
+                                               "Flera dagar" = 2,
+                                               "Mer än hälften av dagarna" = 3, "Nästan varje dag" = 4))))
+
+#d$q20<-recode(d$q20,"'Mycket bättre'=0;'Lite bättre'=1; 'Lika bra'=2; 'Lite sämre'=3; 'Mycket sämre'=4",as.factor=FALSE)
+#d$q20 <- labelled(d$q20, labels = c("Mycket bättre" = 0, "Lite bättre" = 1, "Lika bra" = 2, "Lite sämre" = 3,"Mycket sämre" = 4))
+
+
+count (d, q21)
+count (d, q28)
+
+```
+
+
+## Våld
+```{r}
+
+våld_utsatt <- c("q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28")
+
+våld_förövare <- c("q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28")
+
+#våld_följd
+
+```
+
+
+```{r}
+#d %>% 
+  #select(q13:q20) %>% 
+  #pivot_longer(everything()) %>% 
+  #distinct(value)
+```
+
+
+Sektionen i PDF/pappers-enkäten inleds med meningen: "NÅGRA FRÅGOR OM HUR DU MÅR".
+
+## DF för välbefinnande
+
+```{r}
+
+# Skapa dataframe för välbefinnande utan NA:s
+d_v <- d %>% 
+  select(Kön, Årskurs, Bostad, any_of(välbefinnande))%>% 
+  na.omit()
+
+# Skapa DIF df
+d_dif_v <- d_v %>% 
+  select(Kön, Årskurs, Bostad) %>% 
+  mutate(across(everything(), ~ factor(.x)))
+
+# remove non-items
+d_v <- d_v %>% 
+  select(!c(Kön,Årskurs,Bostad))
+
+```
+
+## DF för PSF
+
+```{r}
+
+# Skapa dataframe för alla PSF utan NA:s
+d_psf <- d %>% 
+  select(Kön, Årskurs, Bostad, any_of(psf))%>% 
+  na.omit()
+
+# Skapa DIF df
+d_dif__psf <- d_psf %>% 
+  select(Kön, Årskurs, Bostad) %>% 
+  mutate(across(everything(), ~ factor(.x)))
+
+# remove non-items
+d_psf <- d_psf %>% 
+  select(!c(Kön,Årskurs,Bostad))
+
+
+# Skapa dataframe för depressionsitems utan NA:s
+d_psf_d <- d %>% 
+  select(Kön, Årskurs, Bostad, any_of(c("q22", "q23", "q24", "q27", "q28")))%>% 
+  na.omit()
+
+# Skapa DIF df
+d_dif__psf_d <- d_psf_d %>% 
+  select(Kön, Årskurs, Bostad) %>% 
+  mutate(across(everything(), ~ factor(.x)))
+
+# remove non-items
+d_psf_d <- d_psf_d %>% 
+  select(!c(Kön,Årskurs,Bostad))
+
+# Skapa dataframe för ångestitems utan NA:s
+d_psf_å <- d %>% 
+  select(Kön, Årskurs, Bostad, any_of(c("q21", "q25", "q26")))%>% 
+  na.omit()
+
+# Skapa DIF df
+d_dif__psf_å <- d_psf_å %>% 
+  select(Kön, Årskurs, Bostad) %>% 
+  mutate(across(everything(), ~ factor(.x)))
+
+# remove non-items
+d_psf_å <- d_psf_å %>% 
+  select(!c(Kön,Årskurs,Bostad))
+
+```
+
+
+## Färger 
+```{r}
+RISEpalette1 <- colorRampPalette(colors = c("#009ca6", "#e83c63", "#ffe500"))(6)
+#scales::show_col(RISEpalette1)
+
+RISEpalette2 <- colorRampPalette(colors = c("#009ca6", "#482d55", "#e83c63", "#ffe500"))(8)
+
+gender_colors <- c("Kille" = colorspace::lighten("#F5A127", amount = 0.2) , "Tjej" = colorspace::lighten("#009CA6", amount = 0.2))
+scale_color_gender <- partial(scale_color_manual, values = gender_colors)
+scale_fill_gender <- partial(scale_fill_manual, values = gender_colors)
+
+##Välbefinnande
+labels_v_13_17 <-c(
+                                               "Mycket ofta" = 0,
+                                               "Ganska ofta" = 1,
+                                               "Ibland" = 2,
+                                               "Sällan" = 3, "Aldrig" = 4)
+names(labels_v_13_17)
+
+
+
+labels_v_18_19 <-c("Alltid" = 0,
+                                               "Mycket ofta" = 1,
+                                               "Ganska ofta" = 2,
+                                               "Ibland" = 3,
+                                               "Sällan" = 4, "Aldrig" = 5)
+names(labels_v_18_19)
+
+labels_v_20 <-c("Mycket bättre" = 0,
+                                               "Lite bättre" = 1,
+                                               "Lika bra" = 2,
+                                               "Lite bättre" = 3,
+                                               "Mycket bättre" = 3)
+names(labels_v_20)
+
+##PSF
+labels_p_21_24 <-c("Aldrig/sällan" = 0,
+                                               "Ibland" = 1,
+                                               "Ganska ofta" = 2,
+                                               "Mycket ofta" = 3)
+names(labels_p_21_24)
+
+labels_p_25_28 <-c("Inte besvärats alls" = 0,
+                                               "En eller två dagar" = 1,
+                                               "Flera dagar" = 2,
+                                               "Mer än hälften av dagarna" = 3, "Nästan varje dag" = 4)
+names(labels_p_25_28)
+
+
+```
+
+
+
+## Deskriptiva data Välbefinnande
+
+## Formatering figur
+```{r}
+
+plot_gender <- function(data, items, kolumner = 2, labelwrap = 24, text_ypos = 28, text_size = 3) {
+  
+  data %>% 
+    pivot_longer(all_of(items),
+                 names_to = "itemnr") %>% 
+    group_by(itemnr,Kön) %>% 
+    count(value) %>% 
+    mutate(percent = n*100/sum(n)) %>% 
+    ungroup() %>% 
+    mutate(Kön = factor(Kön, labels = c("Tjej","Kille")),
+           value = factor(value, ordered = T)) %>% 
+    left_join(itemlabels, by = "itemnr") %>%
+    
+    ggplot(aes(x = value, y = n, fill = Kön)) +
+    geom_col(position = "dodge") +
+    geom_text(aes(label = paste0(round(percent,1),"%"), 
+                  y = text_ypos),
+              position = position_dodge(width = 0.9),
+              angle = 0,
+              color = "black",
+              size = text_size,
+              hjust = "left") +
+    facet_wrap(~item, 
+               ncol = kolumner,
+               labeller = labeller(item = label_wrap_gen(labelwrap))) +
+    scale_fill_gender() +
+    theme_rise(fontfamily = "Avenir") +
+    labs(x = "Svarskategori",
+         y = "Antal svar",
+         caption = "Andel svar anges i procent i figuren.") +
+    coord_flip()
+}
+
+
+
+```
+
+## Deskriptiva figurer blivit välbefinnande
+```{r}
+
+## Utfryst, rykte, trakasserad, begränsad
+d %>% 
+  plot_gender(items = c("q13", "q14", "q15", "q16", "q17"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_v_13_17), 14))
+
+d %>% 
+  plot_gender(items = c("q18", "q19"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_v_18_19), 14))
+
+d %>% 
+  plot_gender(items = c("q20"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_v_20), 14))
+
+
+```
+
+
+## Deskriptiva figurer PSF
+```{r}
+
+## Utfryst, rykte, trakasserad, begränsad
+d %>% 
+  plot_gender(items = c("q21", "q22", "q23", "q24"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_p_21_24), 14))
+
+d %>% 
+  plot_gender(items = c("q25", "q26", "q27", "q28"), labelwrap = 32, text_ypos = 20) +
+  scale_x_discrete(labels = str_wrap(names(labels_p_25_28), 14))
+
+
+```
+
+### Demografi
+
+
+### Item-data
+
+::: panel-tabset
+#### Tile plot
+```{r}
+RItileplot(d_psf)
+```
+#### Stacked bars
+```{r}
+RIbarstack(d_psf)
+```
+#### Barplots
+```{r}
+#| layout-ncol: 2
+RIbarplot(d_psf)
+```
+:::
+
+## Analys 1 samtliga items PSF
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_psf)
+```
+
+::: panel-tabset
+### Mokken dimensionality
+```{r}
+aisp(d_psf) %>% 
+  as.data.frame() %>% 
+  set_names("h > 0.3") %>% 
+  arrange(`h > 0.3`) %>% 
+  kbl_rise(tbl_width = 20)
+```
+
+### Item-restscore
+```{r}
+d_psf %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_psf)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_psf)
+```
+### LRT
+```{r}
+RIbootLRT(d_psf, cpu = 8, samplesize = 400)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_psf)
+```
+### Residualkorrelationer
+```{r}
+simcor <- RIgetResidCor(d_psf, iterations = 1000, cpu = 8)
+RIresidcorr(d_psf, simcor$p999)
+```
+
+### Targeting
+```{r}
+RItargeting(d_psf)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_psf)
+```
+### Svarskategorier
+```{r}
+mirt(d_psf, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-4,7))
+```
+### Person fit
+```{r}
+RIpfit(d_psf)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_psf, d_dif__psf$Kön)
+RIdifTableLR(d_psf, d_dif__psf$Kön)
+RIdifThreshFigLR(d_psf, d_dif__psf$Kön)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$kon)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_psf, d_dif__psf$Årskurs)
+RIdifTableLR(d_psf, d_dif__psf$Årskurs)
+RIdifThreshFigLR(d_psf, d_dif__psf$Årskurs)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$arskurs)
+```
+### DIF år
+```{r}
+RIpartgamDIF(d_v, d_dif_v$Bostad)
+#RIdifTableLR(d_v, d_dif_v$Bostad)
+#RIdifThreshFigLR(d_v, d_dif_v$Bostad)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$year)
+```
+:::
+
+- Alla frågor 1 i Mokken
+- Ingen underfit, alla items verkar höra till samma/närliggande konstrukt
+- Overfit på q28 och q26 - dessa är "core items" för depression respektive ångest i PHQ och GAD-enkäterna
+- PCA 1.82
+- Lokalt beroende främst mellan q26 "oro" och q25 "nervös, orolig, spänd", samt q27 "minskat intresse" och q28 "nedstämd och hopplöst"
+  - dessa par är PHQ-2 (depression) och GAD-2 (oro/ångest), så de förväntas vara lika varandra, och minst en publicerad artikel har identifierat PHQ-items som för lika varandra när de används i PHQ-9, d.v.s. i kontexten av items som mäter något bredare än bara depression.
+- Targeting ok förutom ganska ycket golveffekter dvs. vi kan inte mäta så bra där det förekommer lägre värden av psykisk ohälsa, vilket är väntat.
+- Oordnade svarskategorier på q28, q26 och q25, i samtliga fall gällande de två översta kategorierna
+- De understa svarskategorierna fungerar utmärkt, vilket är viktigt för 25-28 där vi la till en svarskategori, vilket har gett goda resultat.
+
+## Eliminering av item
+
+Även om det inte är det primära syftet är det intressant att se om det går att hitta en uppsättning items som fungerar tillsammans.
+
+::: panel-tabset
+### 25 och 27 tas bort
+```{r}
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  RIbootRestscore(iterations = 250,samplesize = 600, cpu = 8)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  RIbootLRT(cpu = 8, samplesize = 400)
+
+simcor2527 <- d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  RIgetResidCor(iterations = 500, cpu = 8)
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  RIresidcorr(simcor2527$p999)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  RItargeting()
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RItargeting()
+
+```
+
+Ser ganska bra ut. Item 24 möjligen overfit, men inga residualkorrelationer, så det bör inte vara problematiskt. Översta svarskategorierna för 26 och 28 fortfarande oordnade.
+
+### 26 och 28
+```{r}
+d_psf %>% 
+  select(!c(q26,q28)) %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600,cpu = 8)
+
+d_psf %>% 
+  select(!c(q26,q28)) %>% 
+  RIbootLRT(cpu = 8, samplesize = 400)
+
+simcor2527 <- d_psf %>% 
+  select(!c(q26,q28)) %>% 
+  RIgetResidCor(iterations = 500, cpu = 8)
+
+d_psf %>% 
+  select(!c(q26,q28)) %>% 
+  RIresidcorr(simcor2527$p999)
+
+d_psf %>% 
+  select(!c(q26,q28)) %>% 
+  RItargeting()
+
+d_psf %>% 
+  select(!c(q26,q28)) %>% 
+  mutate(across(c(q25,q27), ~ recode(.x,"4=3"))) %>% 
+  RItargeting()
+```
+
+Liknande resultat, men 24 involverad i borderline residualkorrelation med 21. Lite bättre targeting än när 25 och 27 tas bort.
+
+### 25, 27, och 24
+```{r}
+d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+
+d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  RIbootLRT(cpu = 8, samplesize = 400)
+
+simcor252724 <- d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  RIgetResidCor(iterations = 500, cpu = 8)
+d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  RIresidcorr(simcor252724$p999)
+```
+
+Ser bättre ut utan 24.
+
+### 25,27,24 mera
+```{r}
+d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  RIlistitems()
+d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  RItargeting()
+d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RItargeting()
+
+d_psf %>% 
+  select(!c(q25,q27,q24)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RItif(samplePSI = T, cutoff = 3)
+```
+Mest de övre svarskategorierna på item 26 och 28 som vållar problem.
+
+Klar golveffekt, vilket inte är oväntat.
+:::
+
+## Analys 2 samtliga items
+
+Vi tar bort 25 och 27 samt slår samman de två översta svarskategorierna för 26 och 28.
+
+::: panel-tabset
+### Itemhierarki
+```{r}
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIitemHierarchy()
+```
+### Svarskategorier
+```{r}
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>%
+  
+mirt(model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-4,7))
+```
+### Person fit
+```{r}
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+RIpfit()
+```
+### DIF kön
+```{r}
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIpartgamDIF(d_dif__psf$Kön)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIdifTableLR(d_dif__psf$Kön)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIdifThreshFigLR(d_dif__psf$Kön)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIciccPlot(dif = "yes", dif_var = d_dif__psf$Kön)
+```
+### DIF årskurs
+```{r}
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIpartgamDIF(d_dif__psf$Årskurs)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIdifTableLR(d_dif__psf$Årskurs)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIdifThreshFigLR(d_dif__psf$Årskurs)
+
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RIciccPlot(dif = "yes", dif_var = d_dif__psf$Årskurs)
+```
+### Reliabilitet
+```{r}
+d_psf %>% 
+  select(!c(q25,q27)) %>% 
+  mutate(across(c(q26,q28), ~ recode(.x,"4=3"))) %>% 
+  RItif(samplePSI = T)
+```
+:::
+
+Ser acceptabelt ut.
+
+## Analys 1 - Depression
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_psf_d)
+```
+
+::: panel-tabset
+### Mokken dimensionality
+```{r}
+aisp(d_psf_d) %>% 
+  as.data.frame() %>% 
+  set_names("h > 0.3") %>% 
+  arrange(`h > 0.3`) %>% 
+  kbl_rise(tbl_width = 20)
+```
+
+### Item-restscore
+```{r}
+d_psf_d %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_psf_d)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_psf_d)
+```
+### LRT
+```{r}
+RIbootLRT(d_psf_d, samplesize = 400, cpu = 8)
+```
+### Residualkorrelationer
+```{r}
+simcor <- RIgetResidCor(d_psf_d, iterations = 500, cpu = 8)
+
+RIresidcorr(d_psf_d, cutoff = simcor$p999)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_psf_d)
+```
+### Targeting
+```{r}
+RItargeting(d_psf_d)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_psf_d)
+```
+### Svarskategorier
+```{r}
+mirt(d_psf_d, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_psf_d)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_psf_d, d_dif__psf_d$Kön)
+RIdifTableLR(d_psf_d, d_dif__psf_d$Kön)
+dif_depfig <- RIdifThreshFigLR(d_psf_d, d_dif__psf_d$Kön)
+dif_depfig
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_psf_d, d_dif__psf_d$Årskurs)
+RIdifTableLR(d_psf_d, d_dif__psf_d$Årskurs)
+RIdifThreshFigLR(d_psf_d, d_dif__psf_d$Årskurs)
+```
+:::
+
+- Mokken visar samma dimension
+- ingen underfit
+- q28 möjligen overfit
+- PCA 1.61
+- Lokalt beroende mellan q28 och q27 (PHQ-2)
+- Targeting visar stora golveffekter: svårt att mäta lägre nivåer av psykisk ohälsa
+- Svarskategorier
+- Inga problem med invarians
+
+Vi tar bort item 27.
+
+```{r}
+removed_items <- c("q27")
+```
+
+```{r}
+d_backup_psf_d <- d_psf_d
+
+d_psf_d <- d_psf_d %>% 
+  select(!any_of(removed_items))
+```
+
+```{r}
+# d_psf_d <- d_psf_d %>%
+#   mutate(across(any_of(c("q27", "q28")), ~ car::recode(.x, "4=3")))
+
+```
+
+## Analys 2 - depression
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_psf_d)
+```
+
+::: panel-tabset
+### Item-restscore
+```{r}
+d_psf_d %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_psf_d)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_psf_d)
+```
+### LRT
+```{r}
+RIbootLRT(d_psf_d, samplesize = 400, cpu = 8)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_psf_d)
+```
+### Residualkorrelationer
+```{r}
+simcor2 <- RIgetResidCor(d_psf_d, iterations = 500, cpu = 8)
+
+RIresidcorr(d_psf_d, cutoff = simcor2$p999)
+```
+### Targeting
+```{r}
+RItargeting(d_psf_d)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_psf_d)
+```
+### Svarskategorier
+```{r}
+mirt(d_psf_d, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_psf_d)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_psf_d, d_dif__psf_d$Kön)
+RIdifTableLR(d_psf_d, d_dif__psf_d$Kön)
+RIdifThreshFigLR(d_psf_d, d_dif__psf_d$Kön)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_psf_d, d_dif__psf_d$Årskurs)
+RIdifTableLR(d_psf_d, d_dif__psf_d$Årskurs)
+RIdifThreshFigLR(d_psf_d, d_dif__psf_d$Årskurs)
+```
+### Reliabilitet
+```{r}
+d_psf_d %>% 
+  #select(!any_of(removed_items)) %>% 
+  RItif(samplePSI = T)
+```
+:::
+
+Enda kvarstående problemet är översta svarskategorierna för q28.
+
+## Analys 1 Ångest/oro
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_psf_å)
+```
+
+::: panel-tabset
+### Item-restscore
+```{r}
+RIbootRestscore(d_psf_å, iterations = 250, samplesize = 600, cpu = 8)
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_psf_å)
+```
+### LRT
+```{r}
+RIbootLRT(d_psf_å, samplesize = 400, cpu = 8) 
+```
+:::
+
+Item 21 passar inte in med 25 och 26. D.v.s. det mäter inte samma underliggande variabel.
+
+
+## Analys PHQ-2 (q27 + q28)
+
+```{r}
+d_psf_d <- d %>% 
+  select(Kön, Årskurs, Bostad, any_of(c("q22", "q23", "q24", "q27", "q28")))%>% 
+  na.omit() %>% 
+  select(q27,q28)
+```
+
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_psf_d)
+```
+
+::: panel-tabset
+### Item-restscore
+```{r}
+d_psf_d %>% 
+  RIbootRestscore(iterations = 200, samplesize = 600, cpu = 8)
+```
+### LRT
+```{r}
+RIbootLRT(d_psf_d, samplesize = 400, cpu = 8)
+```
+### Targeting
+```{r}
+RItargeting(d_psf_d)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_psf_d)
+```
+### Svarskategorier
+```{r}
+mirt(d_psf_d, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_psf_d)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_psf_d, d_dif__psf_d$Kön)
+RIdifTableLR(d_psf_d, d_dif__psf_d$Kön)
+RIdifThreshFigLR(d_psf_d, d_dif__psf_d$Kön)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_psf_d, d_dif__psf_d$Årskurs)
+RIdifTableLR(d_psf_d, d_dif__psf_d$Årskurs)
+RIdifThreshFigLR(d_psf_d, d_dif__psf_d$Årskurs)
+```
+### DIF bostad
+```{r}
+RIpartgamDIF(d_psf_d, d_dif__psf_d$Bostad)
+#RIdifTableLR(d_v, d_dif_v$Bostad)
+#RIdifThreshFigLR(d_v, d_dif_v$Bostad)
+#RIciccPlot(d_rest, dif = "yes", dif_var = d_dif_rest$year)
+```
+### Reliabilitet
+```{r}
+d_psf_d %>% 
+  #select(!any_of(removed_items)) %>% 
+  RItif(samplePSI = T)
+```
+:::
+
+```{r}
+removed_items <- c("q21")
+```
+
+```{r}
+d_psf_å <- d_psf_å %>% 
+  select(!any_of(removed_items))
+```
+
+
+## Analys GAD-2 (q25 + q26)
+
+```{r}
+d_psf_å <- d_psf_å %>% 
+  select(q25,q26)
+```
+
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_psf_å)
+```
+
+::: panel-tabset
+### Item-restscore
+```{r}
+d_psf_å %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+```
+### LRT
+```{r}
+RIbootLRT(d_psf_å, samplesize = 400, cpu = 8)
+```
+### Targeting
+```{r}
+RItargeting(d_psf_å)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_psf_å)
+```
+### Svarskategorier
+```{r}
+mirt(d_psf_å, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_psf_å)
+```
+### DIF kön
+```{r}
+RIpartgamDIF(d_psf_å, d_dif__psf_å$Kön)
+RIdifTableLR(d_psf_å, d_dif__psf_å$Kön)
+RIdifThreshFigLR(d_psf_å, d_dif__psf_å$Kön)
+```
+### DIF årskurs
+```{r}
+RIpartgamDIF(d_psf_å, d_dif__psf_å$Årskurs)
+RIdifTableLR(d_psf_å, d_dif__psf_å$Årskurs)
+RIdifThreshFigLR(d_psf_å, d_dif__psf_å$Årskurs)
+```
+### Reliabilitet
+```{r}
+d_psf_å %>% 
+  #select(!any_of(removed_items)) %>% 
+  RItif(samplePSI = T)
+```
+:::
+
+## Analys GAD+PHQ
+
+```{r}
+d_psf_d <- d %>% 
+  select(q25:q28) %>% 
+  na.omit()
+```
+
+```{r}
+#| column: margin
+#| echo: false
+RIlistItemsMargin(d_psf_d)
+```
+
+::: panel-tabset
+### Mokken dimensionality
+```{r}
+aisp(d_psf_d) %>% 
+  as.data.frame() %>% 
+  set_names("h > 0.3") %>% 
+  arrange(`h > 0.3`) %>% 
+  kbl_rise(tbl_width = 20)
+```
+
+### Item-restscore
+```{r}
+d_psf_d %>% 
+  RIbootRestscore(iterations = 250, samplesize = 600, cpu = 8)
+```
+### PCA
+```{r}
+#| tbl-cap: "PCA of Rasch model residuals"
+RIpcmPCA(d_psf_d)
+simpca <- RIbootPCA(d_psf_d,cpu = 8)
+simpca$max
+```
+### Loadings 1st contrast
+```{r}
+RIloadLoc(d_psf_d)
+```
+### LRT
+```{r}
+RIbootLRT(d_psf_d, samplesize = 400, cpu = 8)
+```
+### Residualkorrelationer
+```{r}
+simcor4 <- RIgetResidCor(d_psf_d, iterations = 500, cpu = 8)
+RIresidcorr(d_psf_d, cutoff = simcor4$p999)
+```
+### Lokalt oberoende
+```{r}
+RIpartgamLD(d_psf_d)
+```
+### Targeting
+```{r}
+RItargeting(d_psf_d)
+```
+### Itemhierarki
+```{r}
+RIitemHierarchy(d_psf_d)
+```
+### Svarskategorier
+```{r}
+mirt(d_psf_d, model=1, itemtype='Rasch', verbose = FALSE) %>% 
+  plot(type="trace", as.table = TRUE, 
+       theta_lim = c(-5,5))
+```
+### Person fit
+```{r}
+RIpfit(d_psf_d)
+```
+:::
+
+Även om item-restscore inte indikerar någon klar problematik med dimensionaliteten så finns påtagliga residualkorrelationer mellan de två item-paren.
+
+
+## Preliminär riskgruppsanalys
+
+Vi använder ordinal sum score >= 5 som cutoff (fem eller högre), utifrån att 3 normalt sett använts, men vi har lagt till en svarskategori som den nästa lägsta.
+
+### Depression PHQ-2
+
+```{r}
+phq2 <- d %>% 
+  select(q22:q24,q27,q28,Kön,Årskurs) %>% 
+  na.omit() %>% 
+  mutate(phq2_sum = q27 + q28) %>% 
+  mutate(phq_risk = case_when(phq2_sum >= 5 ~ "at_risk",
+                              TRUE ~ "no_risk"))
+
+phq2 %>%
+  group_by(Kön) %>% 
+  count(phq_risk) %>% 
+  mutate(percent = n*100/sum(n)) %>% 
+  kable()
+```
+
+Mer än dubbelt så stor andel bland flickor.
+
+### Depression gamla frågor
+
+Utifrån targeting-figuren i analysen med alla depressions items har vi sum score >=6 på items q22+q23+q24 som motsvarar samma mätvärde (theta) som ovan använda cutoff för q27 och q28.
+
+```{r}
+sthlm_psf_dep <- d %>% 
+  select(q22:q24,q27,q28,Kön,Årskurs) %>% 
+  na.omit() %>% 
+  mutate(dep_sum = q22 + q23 + q24) %>% 
+  mutate(dep_risk = case_when(dep_sum >= 6 ~ "at_risk",
+                              TRUE ~ "no_risk"))
+
+sthlm_psf_dep %>%
+  group_by(Kön) %>% 
+  count(dep_risk) %>% 
+  mutate(percent = n*100/sum(n)) %>% 
+  kable()
+```
+
+Snarlika siffror. Lite större skillnad för pojkarna.
+
+### Depression jämförelse
+
+Vi behöver korsvalidera detta för att se om jämförelsen är stabil även när vi varierar samplet. Korsvalidering gör en slumpmässig indelning av samplet, i vårt fall används 10 delar (subsampel). Sedan upprepas testet 10 gånger, varje gång med något subsampel borttaget. Vi stratifierar indelningen av samplet på Årskurs för att säkerställa likvärdighet i subsamplen.
+
+```{r}
+library(rsample)
+
+d_all <- d %>% 
+  select(q22:q24,q27,q28,Kön,Årskurs) %>% 
+  na.omit() %>% 
+  mutate(dep_sum = q22 + q23 + q24) %>% 
+  mutate(dep_risk = case_when(dep_sum >= 6 ~ "at_risk",
+                              TRUE ~ "no_risk")) %>% 
+  mutate(phq2_sum = q27 + q28) %>% 
+  mutate(phq_risk = case_when(phq2_sum >= 5 ~ "at_risk",
+                              TRUE ~ "no_risk"))
+
+set.seed(8445)
+d_folds <- vfold_cv(d_all, v = 10, strata = Årskurs)
+
+
+
+gamla <- map_dfr(1:10, ~ analysis(d_folds$splits[[.x]]) %>% 
+  group_by(Kön) %>% 
+  count(dep_risk) %>% 
+  mutate(percent = n*100/sum(n))) %>% 
+  ungroup() %>% 
+  group_by(Kön,dep_risk) %>% 
+  summarise(mean = mean(percent),
+            lower = min(percent),
+            upper = max(percent)) %>% 
+  ungroup() %>% 
+  add_column(items = "Gamla frågor")
+
+nya <- map_dfr(1:10, ~ analysis(d_folds$splits[[.x]]) %>% 
+  group_by(Kön) %>% 
+  count(phq_risk) %>% 
+  mutate(percent = n*100/sum(n))) %>% 
+  ungroup() %>% 
+  group_by(Kön,phq_risk) %>% 
+  summarise(mean = mean(percent),
+            lower = min(percent),
+            upper = max(percent)) %>% 
+  ungroup() %>% 
+  add_column(items = "PHQ-2") %>% 
+  rename(dep_risk = phq_risk)
+
+rbind(gamla,nya) %>% 
+  filter(dep_risk == "at_risk") %>% 
+  arrange(Kön) %>% 
+  knitr::kable()
+```
+
+
+```{r}
+nya_alla <- map_dfr(1:10, ~ analysis(d_folds$splits[[.x]]) %>% 
+  group_by(Kön) %>% 
+  count(phq_risk) %>% 
+  mutate(percent = n*100/sum(n))) %>% 
+  ungroup() %>% 
+  rename(dep_risk = phq_risk) %>% 
+  add_column(items = "PHQ-2") 
+
+gamla_alla <- map_dfr(1:10, ~ analysis(d_folds$splits[[.x]]) %>% 
+  group_by(Kön) %>% 
+  count(dep_risk) %>% 
+  mutate(percent = n*100/sum(n))) %>% 
+  ungroup() %>% 
+  add_column(items = "Gamla frågor")
+
+library(ggdist)
+rbind(gamla_alla,nya_alla) %>% 
+  filter(dep_risk == "at_risk") %>% 
+  ggplot(aes(y = items, x = percent)) +
+  # geom_point(position = position_dodge(width = 0.5)) +
+  # geom_errorbar(aes(ymin = lower, ymax = upper),
+  #               position = position_dodge(width = 0.5),
+  #               width = 0.3)
+  stat_dotsinterval(point_interval = "mean_qi", .width = 1) +
+  facet_wrap(~Kön, ncol = 1) +
+  scale_x_continuous(breaks = scales::breaks_pretty(10)) +
+  theme_rise() +
+  labs(y = NULL, x = "Andel elever indikerade med risk för depression",
+       title = "Jämförelse mellan gamla och nya frågor avseende risk för depression",
+       subtitle = "Resultat från korsvalidering med k = 10",
+       caption = "Svart punkt visar medelvärde, linjerna visar lägsta-högsta värde från korsvalideringen.")
+
+rbind(gamla,nya) %>% 
+  filter(dep_risk == "at_risk") %>% 
+  ggplot(aes(y = mean, x = Kön, color = items)) +
+  geom_point(position = position_dodge(width = 0.5),
+             size = 4, shape = 18) +
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+                position = position_dodge(width = 0.5),
+                width = 0.15) +
+  labs(x = NULL, color = NULL,
+       y = "Andel elever indikerade med risk för depression",
+       title = "Jämförelse mellan gamla och nya frågor avseende risk för depression",
+       subtitle = "Resultat från korsvalidering med k = 10",
+       caption = "Punkter visar medelvärde, linjerna visar lägsta-högsta värde från korsvalideringen.") +
+  scale_y_continuous(breaks = scales::breaks_pretty(10)) +
+  theme_rise()
+```
+
+Det finns lite DIF för kön för gamla items, vilket kan vara det som orsakar att pojkarna har aningen större skillnad i riskidentifikation mellan gamla och nya items. PHQ-2 verkar stabilare än de gamla frågorna, vilket framgår i resultatet för flickorna.
+
+```{r}
+dif_depfig + theme_rise()
+```
+
+
+
+
+## Programvara som använts för analyserna
+
+```{r}
+#| label: packagesv
+# pkgs <- cite_packages(cite.tidyverse = TRUE, 
+#                       output = "table",
+#                       bib.file = "grateful-refs.bib",
+#                       include.RStudio = TRUE,
+#                       out.dir = getwd())
+# formattable(pkgs, 
+#             table.attr = 'class=\"table table-striped\" style="font-size: 15px; font-family: Lato; width: 80%"')
+```
+
+```{r}
+sessionInfo()
+```
+
+
+## Referenser
+
+
+
+
+
+
+
+
+
+
+
+
+
