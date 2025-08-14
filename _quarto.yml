@@ -6,6 +6,7 @@ book:
   title: "Stockholmsenkäten 2025"
   subtitle: "Psykometrisk analys med Rasch-metodik"
   repo-url: "https://github.com/pgmj/sthlmsenk2025new"
+  doi: '10.5281/zenodo.16871930'
   sidebar:
     style: floating
     search: true
@@ -17,7 +18,7 @@ book:
     - name: 'Frida Sandelin'
       affiliation: 'RISE Research Institutes of Sweden'
       affiliation-url: 'https://ri.se/kbm'
-  date: last-modified
+  date: 2025-08-14
   chapters:
   - index.qmd
   - 01_Intro.qmd
